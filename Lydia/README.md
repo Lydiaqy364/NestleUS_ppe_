@@ -13,8 +13,6 @@ The main implementation is provided in the notebook `ppe_yolov8.ipynb`.
 - Video-to-frame conversion for data preparation
 
 ## File Overview
-
-- `ppe_v1.ipynb`  
   Main notebook containing the full pipeline:
   - Model setup and training
   - Testing on the test image set
