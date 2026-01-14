@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 
 
-# Coordinates (x,y) from CloudCompare
+# Coordinates (x,y) from CloudCompare (z=0)
 model_points = np.array([
     [31.08, 8.64],  # bottom right door corner
     [30.69, 9.59],  # bottom right stair corner
@@ -17,6 +17,7 @@ model_points = np.array([
 
 
 # Corresponding coordinates from image (in pixels)
+# Corresponding video: 11.43 - KAAN Roll Stock View-2025-10-16_1125am-1155am.mp4
 image_points = np.array([
     [412, 1208],
     [542, 1230],
@@ -26,6 +27,7 @@ image_points = np.array([
 
 
 # Calculate the Homography Matrix
+# RANSAC helps exclude outliers, not helpful with 4 points (minimum)
 H, mask = cv2.findHomography(model_points, image_points, cv2.RANSAC)
 print("Homography Matrix:\n", H)
 
