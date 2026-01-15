@@ -5,26 +5,42 @@
 
 import cv2
 import numpy as np
+import json
+import os
 
+# Load points from points.json
+script_dir = os.path.dirname(os.path.abspath(__file__))
+json_path = os.path.join(script_dir, 'points.json')
 
-# Coordinates (x,y) from CloudCompare (z=0)
-model_points = np.array([
-    [31.08, 8.64],  # bottom right door corner
-    [30.69, 9.59],  # bottom right stair corner
-    [32.57, 9.16],  # bottom right yellow column
-    [32.07, 8.63],  # bottom left door corner
-], dtype=float)
+with open(json_path, 'r') as f:
+    points_data = json.load(f)
 
+model_points_list = []
+image_points_list = []
 
-# Corresponding coordinates from image (in pixels)
-# Corresponding video: 11.43 - KAAN Roll Stock View-2025-10-16_1125am-1155am.mp4
-image_points = np.array([
-    [412, 1208],
-    [542, 1230],
-    [267, 1374],
-    [288, 1285]
-], dtype=float)
+for name, data in points_data.items():
+    world_coords = data['world']
+    pixel_coords = data['pixels']
+    
+    # Check if point is on the ground (Z-coordinate close to 0)
+    # Using 0.1 as threshold for floating point comparisons
+    if abs(world_coords[2]) < 0.1:
+        model_points_list.append(world_coords[:2]) # Taking X and Y
+        image_points_list.append(pixel_coords)
 
+model_points = np.array(model_points_list, dtype=float)
+image_points = np.array(image_points_list, dtype=float)
+
+# Refine points using cornerSubPix
+def refine_points(image_points, img):
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    term = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+    refined_pts = cv2.cornerSubPix(gray, image_points.astype(np.float32), (5, 5), (-1, -1), term)
+    return refined_pts
+
+# # Load image for refinement
+# img = cv2.imread("frame.png")
+# image_points = refine_points(image_points, img)
 
 # Calculate the Homography Matrix
 # RANSAC helps exclude outliers, not helpful with 4 points (minimum)
@@ -42,3 +58,19 @@ print(f"Factory point (31.896, 13.875) is at Pixel: {pixel_coord}")
 test_pixel = np.array([[[1060, 1730]]], dtype=float)
 factory_coord = cv2.perspectiveTransform(test_pixel, np.linalg.inv(H))
 print(f"Pixel point (1060, 1730) is at Factory Coord: {factory_coord}")
+
+
+# Visualize the points on the image
+img = cv2.imread("frame.png")
+for pt in image_points:
+    cv2.circle(img, (int(pt[0]), int(pt[1])), 5, (0, 0, 255), -1)
+
+
+# Show test point
+u, v = int(pixel_coord[0][0][0]), int(pixel_coord[0][0][1])
+cv2.circle(img, (u, v), 7, (0, 255, 0), -1)
+cv2.putText(img, "Test Point", (u+10, v-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), 2)
+
+
+# Save to file
+cv2.imwrite("homography_demo_output.png", img)
