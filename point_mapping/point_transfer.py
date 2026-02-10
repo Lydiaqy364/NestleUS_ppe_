@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 
 
-def find_homography(img1, img2, points):
+def find_homography(img1, img2):
     # Convert frames to grayscale
     gray1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
     gray2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
@@ -58,7 +58,7 @@ def main():
     cv2.destroyWindow('select points (press any key to finish)')
 
     # Transform points from img1 to img2
-    H = find_homography(img1, img2, points)
+    H = find_homography(img1, img2)
     transformed_points = cv2.perspectiveTransform(np.float32(points).reshape(-1, 1, 2), H)
     
     # Visualize original and transformed points
