@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 
 
-def transform_points(img1, img2, points):
+def find_homography(img1, img2, points):
     # Convert frames to grayscale
     gray1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
     gray2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
@@ -28,19 +28,13 @@ def transform_points(img1, img2, points):
     cv2.waitKey(0)
     cv2.destroyWindow("matches")
 
-    # Extract location of good matches
+    # Extract coords of matches
     src_pts = np.float32([kp1[m.queryIdx].pt for m in matches]).reshape(-1, 1, 2)
     dst_pts = np.float32([kp2[m.trainIdx].pt for m in matches]).reshape(-1, 1, 2)
 
     # Find the homography matrix using RANSAC
     H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
-
-    # Transform the saved points
-    # Reshape points to (N, 1, 2) as required by perspectiveTransform
-    pts_to_transform = np.float32(points).reshape(-1, 1, 2)
-    transformed_pts = cv2.perspectiveTransform(pts_to_transform, H)
-
-    return transformed_pts.reshape(-1, 2)
+    return H
 
 
 points = []
@@ -64,19 +58,28 @@ def main():
     cv2.destroyWindow('select points (press any key to finish)')
 
     # Transform points from img1 to img2
-    transformed_points = transform_points(img1, img2, points)
+    H = find_homography(img1, img2, points)
+    transformed_points = cv2.perspectiveTransform(np.float32(points).reshape(-1, 1, 2), H)
     
     # Visualize original and transformed points
+    img1_copy = img1.copy()
     for pt in points:
-        cv2.circle(img1, (int(pt[0]), int(pt[1])), 4, (0, 0, 255), -1)
-    for pt in transformed_points:
+        cv2.circle(img1_copy, (int(pt[0]), int(pt[1])), 4, (0, 0, 255), -1)
+    for pt in transformed_points.reshape(-1, 2):
         cv2.circle(img2, (int(pt[0]), int(pt[1])), 4, (255, 0, 0), -1)
 
-    cv2.imshow('original points', img1)
+    cv2.imshow('original points', img1_copy)
     cv2.imshow('transformed points', img2)
 
     cv2.waitKey(0)
     cv2.destroyAllWindows()
+
+    # Visualize warped image vs actual image
+    warped_img = cv2.warpPerspective(img1, H, (img2.shape[1], img2.shape[0]))
+
+    cv2.imshow('warped image', warped_img)
+    cv2.waitKey(0)
+    cv2.destroyWindow('warped image')
 
 
 if __name__ == "__main__":
